@@ -2,7 +2,11 @@ import discord
 import os
 import requests
 import re
+import time
 from bs4 import BeautifulSoup as bs
+
+client = discord.Client()
+bot_token = os.environ['TOKEN']
 
 def get_response(my_url):
     time.sleep(6)
@@ -71,4 +75,4 @@ async def on_message(msg):
         await client.close()
 
 
-client.run(TOKEN)
+client.run(bot_token)
