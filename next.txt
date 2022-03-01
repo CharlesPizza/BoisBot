@@ -1,0 +1,9 @@
+More modular get_title
+def watched(content):
+  print(content)
+
+def get_site():
+  pass
+
+def poll_users():
+  pass
