@@ -9,12 +9,14 @@ client = discord.Client()
 bot_token = os.environ['TOKEN']
 admins = os.environ['ADMINS']
 
+# request.get handling
 def get_response(my_url):
   time.sleep(6)
   response = requests.get(my_url, headers={'User-Agent': 'Mozilla/5.0'})
   soup = bs(response.text, 'lxml')
   return(soup)
 
+# get ratings from metacritic
 def get_rating(movie_dict):
   prefix_url = 'https://www.metacritic.com/movie/'
   title = movie_dict['meta_suffix']
@@ -29,11 +31,13 @@ def get_rating(movie_dict):
       ratings.append(rating.find('span').text )
   return ratings
 
+# prepare a url suffix for metacritic
 def get_meta_suffix(rtitle):
-  # If discord message failed to embed the bot will visit the site to gather data
+  # transformation table
   trans_from = ' '
   trans_to = '-'
   remove_char = '.!@#$%^&*)]([\''
+  # If discord message failed to embed the bot will visit the site to gather data
   if 'https://' in rtitle:
     movie_dict = {}
     response = requests.get(rtitle, headers={'User-Agent': 'Mozilla/5.0'} )
@@ -58,17 +62,17 @@ def get_meta_suffix(rtitle):
     mytable = meta_suffix.maketrans(trans_from, trans_to, remove_char)
     # special case: +1 --> plus-one
     mytable[43] = '-plus-'
-    meta_suffix = meta_suffix.translate(mytable).strip('-')
-    # meta_suffix = meta_suffix.replace(' ','-').lower().replace('\'', '')
+    meta_suffix = meta_suffix.translate(mytable).strip('-').lower()
     return(meta_suffix)
     
-
+# pull information out of embeded message if possible.
 def handling_embeds(embed_object):
   media = {}
   media['title'] = embed_object.title
   media['url'] = embed_object.url
   media['description'] = embed_object.description
   media['meta_suffix'] = get_meta_suffix(media['title'])
+  # detect if it is a TV Series ifso: raise error to prevent issues
   tvpattern = re.compile(r'TV (Mini )?Series')
   if tvpattern.search(embed_object.title):
     raise ValueError
@@ -81,7 +85,6 @@ def handling_embeds(embed_object):
 async def on_ready():
   print('Movies!')
   print(f'We have logged in as {client.user}')
-
 
 @client.event
 async def on_message(msg):
@@ -112,10 +115,6 @@ async def on_message(msg):
       await msg.channel.send(f'{movie_dict["link"]}')
       await msg.channel.send(f'` {movie_dict["title"]} `')
       await msg.channel.send(f'` | {ratings[0]}/100 | {ratings[1]}/10 | `')
-
-    if msg.content.startswith('!watched'):
-      watched(msg.content)
-
 
     if msg.content.startswith('!shutdown'):
       await msg.channel.send('Shutting Down Robot')
