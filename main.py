@@ -36,7 +36,7 @@ def get_meta_suffix(rtitle):
   # transformation table
   trans_from = ' '
   trans_to = '-'
-  remove_char = '.!@#$%^&*)]([\''
+  remove_char = '.,/!@#$%^&*)]([\':;'
   # If discord message failed to embed the bot will visit the site to gather data
   if 'https://' in rtitle:
     movie_dict = {}
@@ -78,9 +78,9 @@ def handling_embeds(embed_object):
     raise ValueError
   return media
 
-
 # event decoraters
 # notify as ready
+nominations = {}
 @client.event
 async def on_ready():
   print('Movies!')
@@ -91,8 +91,7 @@ async def on_message(msg):
   if str(msg.channel) == 'moviebottest' and str(msg.author) in admins:
     if msg.content.startswith('!test'):
       await msg.channel.send('Testing Connection in 1... 2... 3...')
-      await msg.channel.send(f'We are connected to {msg.channel}')
-      
+      await msg.channel.send(f'We are connected to {msg.channel}')  
 # Check embedded messages
     if msg.embeds:
       medialist = []
@@ -121,6 +120,15 @@ async def on_message(msg):
       await msg.channel.send(msg.author)
       print('/////////////////SHUT DOWN COMMENCED==========================>')
       await client.close()
-
+  
+  elif str(msg.channel) == 'reccomended-movies' and msg.content.startswith('!nominate'):
+    print("we're in nominate")
+    nomination = str(msg.content)
+    if nomination in nominations:
+      nominations[nomination] += 1
+    else:
+      nominations[nomination] = 1
+    await msg.channel.send(f'{str(msg.author)} has nominated {nomination}')
+    await msg.channel.send(nominations)
 
 client.run(bot_token)
