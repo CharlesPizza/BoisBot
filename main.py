@@ -102,10 +102,10 @@ async def on_ready():
 
 @client.event
 async def on_message(msg):
+  response_msg = None
   if str(msg.channel) == 'moviebottest' and str(msg.author) in admins:
     if msg.content.startswith('!test'):
-      await msg.channel.send('Testing Connection in 1... 2... 3...')
-      await msg.channel.send(f'We are connected to {msg.channel}')  
+      response_msg = f'Testing Connection. \n We are connected to the {msg.channel}'
 # Check embedded messages
     if msg.embeds:
       embedlist = []
@@ -113,25 +113,27 @@ async def on_message(msg):
         try:
           embedlist.append(handling_embeds(embeded))
         except ValueError:
-          await msg.channel.send('Error occurred, Is this a movie?')
+          response_msg = 'Error occurred, Is this a movie?'
       for media in embedlist:
         ratings = get_rating(media)
         update_movies(media, str(msg.author))
-        await msg.channel.send(f'` {media["title"]} `')
-        await msg.channel.send(f'` | {ratings[0]}/100 | {ratings[1]}/10 | `')
+        response_msg = f'` {media["title"]} `\n` | {ratings[0]}/100 | {ratings[1]}/10 | `'
 
     if msg.content.startswith('!shutdown'):
-      await msg.channel.send('Shutting Down Robot')
-      await msg.channel.send(msg.author)
+      await msg.channel.send(f'Shutting Down Robot \n {msg.author}')
       print('/////////////////SHUT DOWN COMMENCED==========================>')
       await client.close()
     if msg.content.startswith('!deletedb'):
       for x in db.keys():
         del db[x]
+    # PRINT any response message generated.
+    if response_msg is not None:
+      await msg.channel.send(response_msg)
+      
   elif str(msg.channel) == 'reccomended-movies' and msg.content.startswith('!nominate'):
     print("we're in nominate")
     nominations = nominate(msg.content)
-    await msg.channel.send(f'{str(msg.author)} has nominated {nomination}')
-    await msg.channel.send(nominations)
+    response_msg = f'{str(msg.author)} has nominated {nomination} \n {nominations}'
+
 
 client.run(bot_token)
