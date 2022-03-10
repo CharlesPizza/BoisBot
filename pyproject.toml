@@ -10,6 +10,7 @@ requests = "^2.27.1"
 bs4 = "^0.0.1"
 discord = "^1.7.3"
 lxml = "^4.8.0"
+replit = "^3.2.4"
 
 [tool.poetry.dev-dependencies]
 

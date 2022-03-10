@@ -4,6 +4,8 @@ import requests
 import re
 import time
 from bs4 import BeautifulSoup as bs
+from replit import db
+
 
 client = discord.Client()
 bot_token = os.environ['TOKEN']
@@ -37,33 +39,17 @@ def get_meta_suffix(rtitle):
   trans_from = ' '
   trans_to = '-'
   remove_char = '.,/!@#$%^&*)]([\':;'
-  # If discord message failed to embed the bot will visit the site to gather data
-  if 'https://' in rtitle:
-    movie_dict = {}
-    response = requests.get(rtitle, headers={'User-Agent': 'Mozilla/5.0'} )
-    soup = bs(response.text, 'lxml')
-    title = soup.find('h1', 
-        class_ = re.compile('^TitleHeader__TitleText.*') ).text
-    meta_suffix = title.replace(' ', '-')
-    meta_suffix = meta_suffix.lower()
-    movie_dict['link'] = rtitle
-    movie_dict['title'] = title
-    movie_dict['meta_suffix'] = meta_suffix
-    movie_dict['year'] = soup.find('span',
-        'TitleBlockMetaData__ListItemText-sc-12ein40-2 jedhex' )
-    return(movie_dict)
 # for working with embedded objects
-  else:
 # isolate title by cutting off year and imdb signature
-    # ex. 'Hellraiser (1987) - IMDb' --> 'Hellraiser'
-    search_obj = re.search(r' ?\(\d{4}\)', rtitle)
-    meta_suffix = rtitle[:search_obj.start()]
-    # prep title for metacritic url
-    mytable = meta_suffix.maketrans(trans_from, trans_to, remove_char)
-    # special case: +1 --> plus-one
-    mytable[43] = '-plus-'
-    meta_suffix = meta_suffix.translate(mytable).strip('-').lower()
-    return(meta_suffix)
+  # ex. 'Hellraiser (1987) - IMDb' --> 'Hellraiser'
+  search_obj = re.search(r' ?\(\d{4}\)', rtitle)
+  meta_suffix = rtitle[:search_obj.start()]
+  # prep title for metacritic url
+  mytable = meta_suffix.maketrans(trans_from, trans_to, remove_char)
+  # special case: +1 --> plus-one
+  mytable[43] = '-plus-'
+  meta_suffix = meta_suffix.translate(mytable).strip('-').lower()
+  return(meta_suffix)
     
 # pull information out of embeded message if possible.
 def handling_embeds(embed_object):
@@ -72,11 +58,39 @@ def handling_embeds(embed_object):
   media['url'] = embed_object.url
   media['description'] = embed_object.description
   media['meta_suffix'] = get_meta_suffix(media['title'])
+  media['watched'] = False
   # detect if it is a TV Series ifso: raise error to prevent issues
   tvpattern = re.compile(r'TV (Mini )?Series')
   if tvpattern.search(embed_object.title):
     raise ValueError
   return media
+
+def update_movies(movie_dict, user, watched=False):
+  string_key = movie_dict["meta_suffix"]
+  if string_key in db.keys():
+    movie = db[string_key]
+    if user in movie["watch_list"]:
+      print("You've already nominated this movie")
+      return
+    movie["watch_list"].append(user)
+    db[string_key] = movie
+    print(db[string_key])
+  else:
+    movie_dict["watch_list"] = [user]
+    db[string_key] = movie_dict
+
+def watch_list(command_string, user):
+  string_key = command_string.strip("!watchlist ")
+  if string_key in db.keys():
+    movie = db[string_key]
+    if movie['watched'] == True:
+      return("Sorry, we've already watched that movie")
+    movie["watch_list"].append(user)
+    return(string_key + " added to your watchlist, I'll @ you when watching.")
+  else:
+    print(f'''not found, here is a list of watchlistable movies:''')
+    for key in db.keys():
+      print(key)
 
 # event decoraters
 # notify as ready
@@ -94,40 +108,29 @@ async def on_message(msg):
       await msg.channel.send(f'We are connected to {msg.channel}')  
 # Check embedded messages
     if msg.embeds:
-      medialist = []
+      embedlist = []
       for embeded in msg.embeds:
         try:
-          medialist.append(handling_embeds(embeded))
+          embedlist.append(handling_embeds(embeded))
         except ValueError:
           await msg.channel.send('Error occurred, Is this a movie?')
-      for media in medialist:
+      for media in embedlist:
         ratings = get_rating(media)
-        await msg.channel.send(f'{media["url"]}')
+        update_movies(media, str(msg.author))
         await msg.channel.send(f'` {media["title"]} `')
         await msg.channel.send(f'` | {ratings[0]}/100 | {ratings[1]}/10 | `')
-  
-# Check failed embeds for https:// this will be replaced with command
-    elif msg.content.startswith('https://'):
-      movie_dict = get_meta_suffix(msg.content)
-      ratings = get_rating(movie_dict)
-      print(movie_dict)
-      await msg.channel.send(f'{movie_dict["link"]}')
-      await msg.channel.send(f'` {movie_dict["title"]} `')
-      await msg.channel.send(f'` | {ratings[0]}/100 | {ratings[1]}/10 | `')
 
     if msg.content.startswith('!shutdown'):
       await msg.channel.send('Shutting Down Robot')
       await msg.channel.send(msg.author)
       print('/////////////////SHUT DOWN COMMENCED==========================>')
       await client.close()
-  
+    if msg.content.startswith('!deletedb'):
+      for x in db.keys():
+        del db[x]
   elif str(msg.channel) == 'reccomended-movies' and msg.content.startswith('!nominate'):
     print("we're in nominate")
-    nomination = str(msg.content)
-    if nomination in nominations:
-      nominations[nomination] += 1
-    else:
-      nominations[nomination] = 1
+    nominations = nominate(msg.content)
     await msg.channel.send(f'{str(msg.author)} has nominated {nomination}')
     await msg.channel.send(nominations)
 
