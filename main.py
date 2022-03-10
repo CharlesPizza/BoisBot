@@ -5,7 +5,7 @@ import re
 import time
 from bs4 import BeautifulSoup as bs
 from replit import db
-
+from stayin_alive import stayin_alive
 
 client = discord.Client()
 bot_token = os.environ['TOKEN']
@@ -13,7 +13,7 @@ admins = os.environ['ADMINS']
 
 # request.get handling
 def get_response(my_url):
-  time.sleep(6)
+  time.sleep(2)
   response = requests.get(my_url, headers={'User-Agent': 'Mozilla/5.0'})
   soup = bs(response.text, 'lxml')
   return(soup)
@@ -135,5 +135,5 @@ async def on_message(msg):
     nominations = nominate(msg.content)
     response_msg = f'{str(msg.author)} has nominated {nomination} \n {nominations}'
 
-
+stayin_alive()
 client.run(bot_token)
